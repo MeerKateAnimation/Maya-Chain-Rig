@@ -15,16 +15,15 @@ This tool will be able to create a custom chain rig in Maya. Everything about th
 	- I would like to make a pop-up window for users to easily change attributes without understanding and changing the code.
 
 ## Challenges
-- I will be looking a lot at [Maya's PyMEL Documentaion](https://help.autodesk.com/cloudhelp/2018/CHS/Maya-Tech-Docs/CommandsPython/)
-- I will need to look into how to create a pop-up window in Maya
-- Short sentence of any skill or topic that needs to be learnt or researched.
+- I will be reading a lot of [Maya's PyMEL Documentaion](https://help.autodesk.com/cloudhelp/2018/CHS/Maya-Tech-Docs/CommandsPython/)
+- I will need to look into how to create a pop-up GUI window in Maya
 
 ## Outcomes
 Ideal Outcome:
-- A chain rig that can be costomizable based on the animator's needs. Includes custom number of controls upon creation, a pop-up window to input variables to customize,
+- A chain rig that can be costomizable based on the animator's needs. Includes custom number of controls upon creation, a pop-up window to input variables to customize, and controls to limit how far each chain link can go (based on animator's preferences)
 
 Minimal Viable Outcome:
-- To make a chain rig that is not customizable.
+- To make a chain rig that is not customizable with no GUI pop-up window.
 
 ## Milestones
 
