@@ -32,10 +32,11 @@ def create_rig_control(con_name, radius, length): #consider breaking shape creat
     for y in range(1,3):
         shape=(cmds.circle(n=f"{con_name}_side0{y}", c=(0,0,0), d=1, r=side_radius, nr=(0,1,0), ch=False, s=4))[0]
         cmds.rotate(0, 45, 0, shape)
-        #freeze transformations
         freeze_transformations(shape)
-        #scale shapes to length
-        cmds.scale()
+        #calculate what to scale the shapes by
+        scale_length = length/(radius*2)
+        print(scale_length)
+        cmds.scale(scale_length, 1, 1, shape)
         side_shapes.append(shape)
         
     cmds.rotate(90, 0, 0, side_shapes[0], dph=True)
@@ -44,6 +45,7 @@ def create_rig_control(con_name, radius, length): #consider breaking shape creat
     for each in (end_shapes + side_shapes):
         freeze_transformations(each)
     print()
+    combine_shapes(con_name, (end_shapes + side_shapes))
     '''print(shapes)
     for each in shapes:
         print(each)
@@ -51,7 +53,22 @@ def create_rig_control(con_name, radius, length): #consider breaking shape creat
     return shapes'''
 
 def combine_shapes(name, shapes): #TODO find better name for function
-    pass
+    cmds.select(d=True)
+    new_object = cmds.group(n=name, em=True)
+    #select shapes
+    cmds.select(shapes)
+    cmds.pickWalk(d='down')
+    #select empty group
+    cmds.select(new_object, add=True)
+    cmds.parent(r=True, s=True)
+    #select and delete remaining empty nodes
+    cmds.select(d=True)
+    for each in shapes:
+        cmds.select(each, add=True)
+    cmds.delete()
+
+
+
 
 def freeze_transformations(object, absolute=True, translate=True, rotate=True, scale=True):
     cmds.makeIdentity(object, a=absolute, t=translate, r=rotate, s=scale)
@@ -67,7 +84,7 @@ def freeze_transformations(object, absolute=True, translate=True, rotate=True, s
 
 
 def main():
-    create_rig_control("con", 2, 3)
+    create_rig_control("con", 2, 4)
 
 if __name__ == "__main__":
     main()
