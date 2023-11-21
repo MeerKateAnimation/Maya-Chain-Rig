@@ -12,18 +12,39 @@ control_name = "chainControl"
 control_padding = 2 
 
 chain_links = 10 #only applies if selection is empty
+chain_name = "chain" #only applies if selection is empty
 
 
 
 '''---------------'''
 
-#TODO read selected meshes and create some if none are selected
+
 def read_selected():
     selected_objects = cmds.ls(sl=True)
     return selected_objects
 
-def create_chain_model(units):
-    pass
+def create_chain_model(name, units):
+    chain = []
+    for x in range(units):
+        link = cmds.polyTorus(n=f"{name}{x}", r=0.8, sr=0.25, sa=10, sh=10)
+        chain.append(link)
+    offset_chain(chain, (1,0,0), (30,0,0))
+
+def offset_chain(chain, offsetT, offsetR):
+    new_offsetT = (0,0,0)
+    new_offsetR = (0,0,0)
+    for link in chain:
+        cmds.move(new_offsetT[0], new_offsetT[1], new_offsetT[2], link)
+        cmds.rotate(new_offsetR[0], new_offsetR[1], new_offsetR[2], link)
+        new_offsetT = (new_offsetT[0] + offsetT[0],
+                       new_offsetT[1] + offsetT[1],
+                       new_offsetT[2] + offsetT[2])
+        new_offsetR = (new_offsetR[0] + offsetR[0],
+                       new_offsetR[1] + offsetR[1],
+                       new_offsetR[2] + offsetR[2])
+
+    
+
 
 #TODO make a pop-up window with options to customize rig
 #TODO calculate curve points and joints amount
@@ -73,9 +94,6 @@ def combine_shapes(name, shapes): #TODO find better name for function
     cmds.delete()
     return new_object
 
-
-
-
 def freeze_transformations(object, absolute=True, translate=True, rotate=True, scale=True):
     cmds.makeIdentity(object, a=absolute, t=translate, r=rotate, s=scale)
 
@@ -93,7 +111,7 @@ def main():
     #get selected geometry 
     geometry = read_selected()
     if geometry == []:
-        geometry = create_chain_model()
+        geometry = create_chain_model(chain_name, chain_links)
     elif selection_sort == True:
         geometry.sort()
 
