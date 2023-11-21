@@ -147,9 +147,37 @@ def freeze_transformations(object, absolute=True, translate=True, rotate=True, s
     cmds.makeIdentity(object, a=absolute, t=translate, r=rotate, s=scale)
 
 def create_control_joint(name, position):
-    #cmds.joint(n=name, p=position)
-    pass
+    joint = cmds.joint(n=name, p=position)
+    return joint
 
+def create_control_rig(curve_points):
+    point_index = 0
+    controls = []
+    joints = []
+    for x in range(control_number):
+        print(x)
+        print(control_number)
+        new_control = create_rig_control(f"{control_name}{x}_CTRL", control_radius, control_height)#TODO pad number
+        cmds.rotate(0, 0, 90, new_control)
+        cmds.move(curve_points[point_index][0], 
+                  curve_points[point_index][1], 
+                  curve_points[point_index][2],
+                  new_control)
+        freeze_transformations(new_control)
+        new_joint = create_control_joint(f"{control_name}{x}_JNT", curve_points[point_index])
+        point_index += 4
+        controls.append(new_control)
+        joints.append(new_joint)
+        print(new_joint)
+        #constrain
+        cmds.parentConstraint(str(new_control), str(new_joint), w=1)
+        cmds.scaleConstraint(str(new_control), str(new_joint), w=1)
+        #cmds.parentConstraint('pTorus1', 'pCone1')
+
+
+    return (controls, joints)
+        
+        
 #TODO constrain joints to controls
 #TODO calculate distance between chain links
 #TODO constrain chains to curve
@@ -172,14 +200,15 @@ def main():
     curve_points = calculate_curve_points(curve_ends[0], curve_ends[1], total_points)
     print(curve_points)
     create_curve("chainCurve", curve_points)
-    #create control
-    '''for x in range(control_number):
-        create_rig_control(f"{control_name}{x}_CTRL", control_radius, control_height)#TODO pad number
-        create_control_joint(f"{control_name}{x}_JNT", (x,0,0))
-        #TODO create joints
+    #create control rig
+    controls, joints = create_control_rig(curve_points)
+    print(controls)
+    print(joints)
+
+
     #TODO rotate control 90 in z
     #TODO move object evenly between curve_ends (use for controls and joints)
-    '''
+    
 
 if __name__ == "__main__":
     main()
