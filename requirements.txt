@@ -1,1 +1,2 @@
-maya
+maya.cmds
+math
