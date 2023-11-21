@@ -34,7 +34,7 @@ def create_chain_model(name, units):
         chain.append(link)
     offset_chain(chain, (1,0,0), (30,0,0))
 
-def offset_chain(chain, offsetT, offsetR):
+def offset_chain(chain, offsetT, offsetR): #try to add toples together instead of individual indexes of tople
     new_offsetT = (0,0,0)
     new_offsetR = (0,0,0)
     for link in chain:
@@ -178,7 +178,6 @@ def create_control_rig(curve_points):
     return (controls, joints)
         
         
-#TODO constrain joints to controls
 #TODO calculate distance between chain links
 #TODO constrain chains to curve
 #TODO make a control to limit each chain's distance from each other link
@@ -205,9 +204,12 @@ def main():
     print(controls)
     print(joints)
 
+    control_grp = cmds.group(controls, n="controls")
+    joint_grp = cmds.group(joints, n="joints")
+    geo_grp = cmds.group()
+    final_rig_grp = cmds.group([control_grp, joint_grp, geo_grp], n=f"{chain_name}_rig")
+    
 
-    #TODO rotate control 90 in z
-    #TODO move object evenly between curve_ends (use for controls and joints)
     
 
 if __name__ == "__main__":
