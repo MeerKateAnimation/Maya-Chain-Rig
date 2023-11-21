@@ -33,7 +33,7 @@ def create_rig_control(con_name, radius, length): #consider breaking shape creat
         shape=(cmds.circle(n=f"{con_name}_side0{y}", c=(0,0,0), d=1, r=side_radius, nr=(0,1,0), ch=False, s=4))[0]
         cmds.rotate(0, 45, 0, shape)
         #freeze transformations
-        cmds.makeIdentity(shape, a=True, t=True, r=True, s=True) #make own function
+        freeze_transformations(shape)
         #scale shapes to length
         cmds.scale()
         side_shapes.append(shape)
@@ -42,7 +42,7 @@ def create_rig_control(con_name, radius, length): #consider breaking shape creat
     cmds.rotate(0, 0, 90, side_shapes[1], dph=True)
 
     for each in (end_shapes + side_shapes):
-        cmds.makeIdentity(each, a=True, t=True, r=True, s=True)
+        freeze_transformations(each)
     print()
     '''print(shapes)
     for each in shapes:
@@ -50,11 +50,11 @@ def create_rig_control(con_name, radius, length): #consider breaking shape creat
         
     return shapes'''
 
-def combine_shapes(): #TODO find better name for function
+def combine_shapes(name, shapes): #TODO find better name for function
     pass
 
-def freeze_transformations(object, t=True, r=True, s=True):
-    pass
+def freeze_transformations(object, absolute=True, translate=True, rotate=True, scale=True):
+    cmds.makeIdentity(object, a=absolute, t=translate, r=rotate, s=scale)
 
 #TODO constrain joints to controls
 #TODO calculate distance between chain links
