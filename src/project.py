@@ -9,9 +9,11 @@ numbers_padding = 2 #not implimented
 
 selection_sort = True
 
-control_number = 2
+control_number = 5
 control_name = "chainControl"
 control_padding = 2 
+control_radius = 2
+control_height = 4
 
 chain_links = 10 #only applies if selection is empty
 chain_name = "chain" #only applies if selection is empty
@@ -51,7 +53,7 @@ def offset_chain(chain, offsetT, offsetR):
 def calculate_chain_ends(chain):
     #get location of first and last chain
     x1 = 0
-    x2 = 5
+    x2 = 20
     return (x1, x2)
 
 
@@ -70,14 +72,31 @@ def calculate_point_num():
     return curve_point_num
 
 #TODO create curve
-def create_curve(name, x1, x2):
-    point_offset = calculate_point_offset(x1,x2)
+def create_curve(name, points):
+    #point_offset = calculate_point_offset(start_point, end_point)
+    #offset = 0
+    curve = cmds.curve(n=name, d=3, p=(0,0,0)) #first curve point
+    #points = calculate_point_num() #gets list of tuple positions (theoretically)
+    print(f"received points: {points}")
+    for x in range(1,len(points)):
+        print(f"points: {points[x]}")
+        cmds.curve(curve, a=True, p=(points[x]))
+        #offset = offset + point_offset
+
+
+def calculate_curve_points(start_point, end_point, total_points):
+    points = []
     offset = 0
-    curve = cmds.curve(n=name, d=3, p=(0,0,0))
-    points = calculate_point_num()
-    for x in range(points):
-        cmds.curve(curve, a=True, p=(offset,0,0))
+    point_offset = calculate_point_offset(start_point, end_point)
+    
+    #curve = cmds.curve(n=name, d=3, p=(0,0,0))
+    
+    for x in range(total_points):
+        #cmds.curve(curve, a=True, p=(offset,0,0))
+        points.append((offset,0,0)) #creates an offset in x-axis
         offset = offset + point_offset
+    print(f"calculated points: {points}")
+    return points
 
 #TODO skin curve to joints
 
@@ -127,6 +146,10 @@ def combine_shapes(name, shapes): #TODO find better name for function
 def freeze_transformations(object, absolute=True, translate=True, rotate=True, scale=True):
     cmds.makeIdentity(object, a=absolute, t=translate, r=rotate, s=scale)
 
+def create_control_joint(name, position):
+    #cmds.joint(n=name, p=position)
+    pass
+
 #TODO constrain joints to controls
 #TODO calculate distance between chain links
 #TODO constrain chains to curve
@@ -140,16 +163,23 @@ def freeze_transformations(object, absolute=True, translate=True, rotate=True, s
 def main():
     #get selected geometry 
     geometry = read_selected()
-    if geometry == []:
+    '''if geometry == []:
         geometry = create_chain_model(chain_name, chain_links)
     elif selection_sort == True:
-        geometry.sort()
-
-    create_curve("chainCurve", 0,5)
+        geometry.sort()'''
+    curve_ends = calculate_chain_ends(geometry)
+    total_points = calculate_point_num()
+    curve_points = calculate_curve_points(curve_ends[0], curve_ends[1], total_points)
+    print(curve_points)
+    create_curve("chainCurve", curve_points)
     #create control
-    for x in range(control_number):
-        create_rig_control(f"{control_name}{x}", 2, 4)#TODO pad number
-
+    '''for x in range(control_number):
+        create_rig_control(f"{control_name}{x}_CTRL", control_radius, control_height)#TODO pad number
+        create_control_joint(f"{control_name}{x}_JNT", (x,0,0))
+        #TODO create joints
+    #TODO rotate control 90 in z
+    #TODO move object evenly between curve_ends (use for controls and joints)
+    '''
 
 if __name__ == "__main__":
     main()
