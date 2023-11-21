@@ -1,14 +1,26 @@
-import maya.cmds as cmds #look up if it's maya, maya.cmds, or something else
+import maya.cmds as cmds
 import math
 
 
 '''------------------
 CHANGEABLE ATTRIBUTES
 ------------------'''
+selection_sort = True
+
+control_number = 3
+control_name = "chainControl"
+control_padding = 2 
+
+chain_links = 10 #only applies if selection is empty
+
+
+
+'''---------------'''
 
 #TODO read selected meshes and create some if none are selected
 def read_selected():
-    pass
+    selected_objects = cmds.ls(sl=True)
+    return selected_objects
 
 def create_chain_model(units):
     pass
@@ -17,7 +29,7 @@ def create_chain_model(units):
 #TODO calculate curve points and joints amount
 #TODO create curve
 #TODO skin curve to joints
-#TODO create animation controls
+
 def create_rig_control(con_name, radius, length): #consider breaking shape creation out into it's own functions? or at least the square/rectangle part
     end_shapes = []
     side_shapes=[]
@@ -35,22 +47,15 @@ def create_rig_control(con_name, radius, length): #consider breaking shape creat
         freeze_transformations(shape)
         #calculate what to scale the shapes by
         scale_length = length/(radius*2)
-        print(scale_length)
         cmds.scale(scale_length, 1, 1, shape)
         side_shapes.append(shape)
-        
+    #stands objects up
     cmds.rotate(90, 0, 0, side_shapes[0], dph=True)
     cmds.rotate(0, 0, 90, side_shapes[1], dph=True)
-
     for each in (end_shapes + side_shapes):
         freeze_transformations(each)
-    print()
-    combine_shapes(con_name, (end_shapes + side_shapes))
-    '''print(shapes)
-    for each in shapes:
-        print(each)
-        
-    return shapes'''
+    new_control = combine_shapes(con_name, (end_shapes + side_shapes))
+    return new_control
 
 def combine_shapes(name, shapes): #TODO find better name for function
     cmds.select(d=True)
@@ -66,6 +71,7 @@ def combine_shapes(name, shapes): #TODO find better name for function
     for each in shapes:
         cmds.select(each, add=True)
     cmds.delete()
+    return new_object
 
 
 
@@ -84,7 +90,17 @@ def freeze_transformations(object, absolute=True, translate=True, rotate=True, s
 
 
 def main():
-    create_rig_control("con", 2, 4)
+    #get selected geometry 
+    geometry = read_selected()
+    if geometry == []:
+        geometry = create_chain_model()
+    elif selection_sort == True:
+        geometry.sort()
+
+    #create control
+'''    for x in range(control_number):
+        create_rig_control(f"{control_name}{x}", 2, 4)#TODO pad number
+'''
 
 if __name__ == "__main__":
     main()
