@@ -5,9 +5,11 @@ import math
 '''------------------
 CHANGEABLE ATTRIBUTES
 ------------------'''
+numbers_padding = 2 #not implimented
+
 selection_sort = True
 
-control_number = 3
+control_number = 2
 control_name = "chainControl"
 control_padding = 2 
 
@@ -15,9 +17,9 @@ chain_links = 10 #only applies if selection is empty
 chain_name = "chain" #only applies if selection is empty
 
 
-
 '''---------------'''
 
+#TODO make a pop-up window with options to customize rig
 
 def read_selected():
     selected_objects = cmds.ls(sl=True)
@@ -43,12 +45,40 @@ def offset_chain(chain, offsetT, offsetR):
                        new_offsetR[1] + offsetR[1],
                        new_offsetR[2] + offsetR[2])
 
-    
 
 
-#TODO make a pop-up window with options to customize rig
 #TODO calculate curve points and joints amount
+def calculate_chain_ends(chain):
+    #get location of first and last chain
+    x1 = 0
+    x2 = 5
+    return (x1, x2)
+
+
+def calculate_point_offset(x1, x2):
+    distance = abs(x2-x1)
+    print(distance)
+    #calculate amount of curve points to accompany joints
+    curve_point_num = calculate_point_num()
+    print(curve_point_num)
+    curve_point_distance = distance/curve_point_num
+    print(curve_point_distance)
+    return(curve_point_distance)
+
+def calculate_point_num():
+    curve_point_num = (control_number*4) - 3
+    return curve_point_num
+
 #TODO create curve
+def create_curve(name, x1, x2):
+    point_offset = calculate_point_offset(x1,x2)
+    offset = 0
+    curve = cmds.curve(n=name, d=3, p=(0,0,0))
+    points = calculate_point_num()
+    for x in range(points):
+        cmds.curve(curve, a=True, p=(offset,0,0))
+        offset = offset + point_offset
+
 #TODO skin curve to joints
 
 def create_rig_control(con_name, radius, length): #consider breaking shape creation out into it's own functions? or at least the square/rectangle part
@@ -115,10 +145,11 @@ def main():
     elif selection_sort == True:
         geometry.sort()
 
+    create_curve("chainCurve", 0,5)
     #create control
-'''    for x in range(control_number):
+    for x in range(control_number):
         create_rig_control(f"{control_name}{x}", 2, 4)#TODO pad number
-'''
+
 
 if __name__ == "__main__":
     main()
