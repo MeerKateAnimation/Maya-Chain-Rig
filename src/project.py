@@ -9,11 +9,11 @@ numbers_padding = 2 #not implimented
 
 selection_sort = True
 
-control_number = 5
+control_number = 10
 control_name = "chainControl"
 control_padding = 2 
-control_radius = 2
-control_height = 4
+control_radius = 1
+control_height = 1
 
 chain_links = 10 #only applies if selection is empty
 chain_name = "chain" #only applies if selection is empty
@@ -82,6 +82,7 @@ def create_curve(name, points):
         print(f"points: {points[x]}")
         cmds.curve(curve, a=True, p=(points[x]))
         #offset = offset + point_offset
+    return curve
 
 
 def calculate_curve_points(start_point, end_point, total_points):
@@ -98,7 +99,6 @@ def calculate_curve_points(start_point, end_point, total_points):
     print(f"calculated points: {points}")
     return points
 
-#TODO skin curve to joints
 
 def create_rig_control(con_name, radius, length): #consider breaking shape creation out into it's own functions? or at least the square/rectangle part
     end_shapes = []
@@ -117,6 +117,7 @@ def create_rig_control(con_name, radius, length): #consider breaking shape creat
         freeze_transformations(shape)
         #calculate what to scale the shapes by
         scale_length = length/(radius*2)
+        print(f"scale length: {scale_length}")
         cmds.scale(scale_length, 1, 1, shape)
         side_shapes.append(shape)
     #stands objects up
@@ -198,12 +199,29 @@ def main():
     total_points = calculate_point_num()
     curve_points = calculate_curve_points(curve_ends[0], curve_ends[1], total_points)
     print(curve_points)
-    create_curve("chainCurve", curve_points)
+    rig_curve = create_curve("chainCurve", curve_points)
+    print(f"returned curve{rig_curve}")
+    print(rig_curve)
+
     #create control rig
     controls, joints = create_control_rig(curve_points)
     print(controls)
     print(joints)
+    print(rig_curve)
+    cmds.select(joints, r=True)
+    cmds.select(rig_curve, add=True)
+    bindable_objects = joints.copy().append(rig_curve)
+    print(bindable_objects)
+    #cmds.bindSkin(tsb=True)
+    #tsb=True
+    curve_dropoff_rate = 4 #range of 0.1-10.0
+    cmds.skinCluster(tsb=True, bm=0, sm=1, nw=1, wd=1, mi=2, omi=True, dr=curve_dropoff_rate, rui=True,)
+    #newSkinCluster "-toSelectedBones -bindMethod 0 -skinMethod 1 -normalizeWeights 1 
+    # -weightDistribution 1 -mi 5 -omi true -dr 4 -rui true  , multipleBindPose, 1";
 
+
+
+    #group stuff in final hiearchy
     control_grp = cmds.group(controls, n="controls")
     joint_grp = cmds.group(joints, n="joints")
     geo_grp = cmds.group()
