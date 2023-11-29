@@ -9,13 +9,13 @@ numbers_padding = 2 #not implimented
 
 selection_sort = True
 
-control_number = 10
+control_number = 3
 control_name = "chainControl"
 control_padding = 2 
 control_radius = 1
 control_height = 1
 
-chain_links = 10 #only applies if selection is empty
+chain_links = 11 #only applies if selection is empty
 chain_name = "chain" #only applies if selection is empty
 
 
@@ -30,9 +30,10 @@ def read_selected():
 def create_chain_model(name, units):
     chain = []
     for x in range(units):
-        link = cmds.polyTorus(n=f"{name}{x}", r=0.8, sr=0.25, sa=10, sh=10)
+        link = cmds.polyTorus(n=f"{name}{x}", r=0.8, sr=0.25, sa=10, sh=10, ch=False)[0]
         chain.append(link)
     offset_chain(chain, (1,0,0), (30,0,0))
+    return chain
 
 def offset_chain(chain, offsetT, offsetR): #try to add toples together instead of individual indexes of tople
     new_offsetT = (0,0,0)
@@ -122,7 +123,7 @@ def create_rig_control(con_name, radius, length): #consider breaking shape creat
         side_shapes.append(shape)
     #stands objects up
     cmds.rotate(90, 0, 0, side_shapes[0], dph=True)
-    cmds.rotate(0, 0, 90, side_shapes[1], dph=True)
+    cmds.rotate(0, 0, -90, side_shapes[1], dph=True)
     for each in (end_shapes + side_shapes):
         freeze_transformations(each)
     new_control = combine_shapes(con_name, (end_shapes + side_shapes))
@@ -179,8 +180,41 @@ def create_control_rig(curve_points):
     return (controls, joints)
         
         
+#TODO get length of curve 
+def get_curve_length(curve): #actually might not be needed if percentage works
+    length = cmds.getAttr(f"{curve}.minMaxValue.maxValue")
+    print(f"curve length: {length}")
+    return length
+
 #TODO calculate distance between chain links
+def calculate_object_offset(curve, object_number):
+    print(f"object num: {object_number}")
+    #curve_length = get_curve_length(curve)
+    offset = 1.0 / (object_number - 1) # -1 from object_number to acount for object at 0
+    print (f"curve offset: {offset}")
+    return offset
+
 #TODO constrain chains to curve
+#TODO create pointOnCurveInfo node for each link
+def get_object_shape(object):
+    cmds.select(object, r=True)
+    cmds.pickWalk(d="down")
+    shape = read_selected()[0]
+    return shape
+
+def constrain_to_curve(curve, object, offset):
+    shape = get_object_shape(curve)
+    point_on_curve_info = cmds.createNode("pointOnCurveInfo")
+    cmds.setAttr(f"{point_on_curve_info}.turnOnPercentage", 1)
+    cmds.connectAttr(f"{shape}.local", f"{point_on_curve_info}.inputCurve")
+    cmds.connectAttr(f"{point_on_curve_info}.result.position", f"{object}.translate")
+    cmds.setAttr(f"{point_on_curve_info}.parameter", offset)
+    pass
+#TODO create geo group for each link
+#TODO connect local(curve) to input curve(pointOnCurveInfo)
+#TODO connect position(pointOnCurveInfo) to transform(linkGrp)
+#TODO space out parameter(pointOnCurveInfo) based on length of curve and distance between chain links
+
 #TODO make a control to limit each chain's distance from each other link
 #TODO write docstrings? 
 
@@ -191,10 +225,10 @@ def create_control_rig(curve_points):
 def main():
     #get selected geometry 
     geometry = read_selected()
-    '''if geometry == []:
+    if geometry == []:
         geometry = create_chain_model(chain_name, chain_links)
     elif selection_sort == True:
-        geometry.sort()'''
+        geometry.sort()
     curve_ends = calculate_chain_ends(geometry)
     total_points = calculate_point_num()
     curve_points = calculate_curve_points(curve_ends[0], curve_ends[1], total_points)
@@ -219,12 +253,23 @@ def main():
     #newSkinCluster "-toSelectedBones -bindMethod 0 -skinMethod 1 -normalizeWeights 1 
     # -weightDistribution 1 -mi 5 -omi true -dr 4 -rui true  , multipleBindPose, 1";
 
+    #connecting links to curve
+    print(f"geo: {geometry}")
+    offset = calculate_object_offset(rig_curve, len(geometry))
+    temp_object = cmds.polyTorus(n="tempObject", r=0.8, sr=0.25, sa=10, sh=10, ch=False)[0]
+    percentage = 0
+    for obj in geometry:
+        constrain_to_curve(rig_curve, obj, percentage)
+        print(percentage)
+        percentage += offset
+    
+
 
 
     #group stuff in final hiearchy
     control_grp = cmds.group(controls, n="controls")
     joint_grp = cmds.group(joints, n="joints")
-    geo_grp = cmds.group()
+    geo_grp = cmds.group(geometry, n="geometry")
     final_rig_grp = cmds.group([control_grp, joint_grp, geo_grp], n=f"{chain_name}_rig")
     
 
