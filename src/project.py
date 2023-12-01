@@ -202,14 +202,51 @@ def get_object_shape(object):
     shape = read_selected()[0]
     return shape
 
-def constrain_to_curve(curve, object, offset):
-    shape = get_object_shape(curve)
+def constrain_to_curve(curve, object, offset): #come back to this... maybe give up and use joints... specifically an ik spline
+    '''shape = get_object_shape(curve)
     point_on_curve_info = cmds.createNode("pointOnCurveInfo")
     cmds.setAttr(f"{point_on_curve_info}.turnOnPercentage", 1)
     cmds.connectAttr(f"{shape}.local", f"{point_on_curve_info}.inputCurve")
     cmds.connectAttr(f"{point_on_curve_info}.result.position", f"{object}.translate")
-    cmds.setAttr(f"{point_on_curve_info}.parameter", offset)
+    cmds.setAttr(f"{point_on_curve_info}.parameter", offset)'''
     pass
+
+
+
+def create_chain_joints(chain_name, geometry):
+    joints = []
+    cmds.select(cl=True)
+    for x in range(len(geometry)):
+        #get location of chain link
+        location = cmds.getAttr(f"{geometry[x]}.translate")[0]
+        #create link joint
+        joint = cmds.joint(n=f"{chain_name}{x}_JNT", p=location)
+        joints.append(joint)
+        print(f"new joint: {joint}")
+    print(f"all joints: {joints}")
+    return joints
+
+def create_ik_spline(curve, joints):
+    #create spline with current curve
+    #ikHandle -sol ikSplineSolver;
+    cmds.ikHandle(c=curve, sol="ikSplineSolver", sj=joints[0], ee=joints[-1])
+    pass
+
+def make_ik_spline_stretchy(curve):
+    get_curve_length(curve)
+    #do stuff to make spline stretchy
+    print("I will eventually be stretchy")
+    pass
+
+def constrain_geo(geometry, constraint):
+    #constrain transform
+    #constrain rotation
+    print(f"I should constrain {geometry} to {constraint} eventually")
+    pass
+
+
+
+
 #TODO create geo group for each link
 #TODO connect local(curve) to input curve(pointOnCurveInfo)
 #TODO connect position(pointOnCurveInfo) to transform(linkGrp)
@@ -255,13 +292,17 @@ def main():
 
     #connecting links to curve
     print(f"geo: {geometry}")
-    offset = calculate_object_offset(rig_curve, len(geometry))
+    chain_joints = create_chain_joints(chain_name, geometry)
+    create_ik_spline(rig_curve, chain_joints)
+    for x in range(len(chain_joints)):
+        constrain_geo(geometry[x], chain_joints[x])
+    '''offset = calculate_object_offset(rig_curve, len(geometry))
     temp_object = cmds.polyTorus(n="tempObject", r=0.8, sr=0.25, sa=10, sh=10, ch=False)[0]
     percentage = 0
     for obj in geometry:
         constrain_to_curve(rig_curve, obj, percentage)
         print(percentage)
-        percentage += offset
+        percentage += offset'''
     
 
 
