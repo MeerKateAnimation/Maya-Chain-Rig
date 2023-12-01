@@ -10,12 +10,12 @@ numbers_padding = 2 #not implimented
 selection_sort = True
 
 control_number = 3
-control_name = "chainControl"
+#chain_name = "chainControl"
 control_padding = 2 
 control_radius = 1
 control_height = 1
 
-chain_links = 11 #only applies if selection is empty
+chain_links = 20 #only applies if selection is empty
 chain_name = "chain" #only applies if selection is empty
 
 
@@ -30,7 +30,7 @@ def read_selected():
 def create_chain_model(name, units):
     chain = []
     for x in range(units):
-        link = cmds.polyTorus(n=f"{name}{x}", r=0.8, sr=0.25, sa=10, sh=10, ch=False)[0]
+        link = cmds.polyTorus(n=f"{name}{x}", r=0.9, sr=0.15, sa=10, sh=10, ch=False)[0]
         geo_group = cmds.group(link, n=f"{name}{x}_GRP")
         chain.append(geo_group)
     offset_chain(chain, (1,0,0), (90,0,0))
@@ -105,19 +105,19 @@ def calculate_curve_points(start_point, end_point, total_points):
     return points
 
 
-def create_rig_control(con_name, radius, length): #consider breaking shape creation out into it's own functions? or at least the square/rectangle part
+def create_rig_control(name, radius, length): #consider breaking shape creation out into it's own functions? or at least the square/rectangle part
     end_shapes = []
     side_shapes=[]
     #create ends of control
     for x in range(1,3):
-        shape=(cmds.circle(n=f"{con_name}_end0{x}", c=(0,0,0), d=3, r=radius, nr=(0,1,0), ch=False))[0]
+        shape=(cmds.circle(n=f"{name}_end0{x}", c=(0,0,0), d=3, r=radius, nr=(0,1,0), ch=False))[0]
         end_shapes.append(shape)
     cmds.move(0, radius, 0, end_shapes[0])
     cmds.move(0, -radius, 0, end_shapes[1])
     #create sides of control
     side_radius = math.sqrt(2*(radius*radius))
     for y in range(1,3):
-        shape=(cmds.circle(n=f"{con_name}_side0{y}", c=(0,0,0), d=1, r=side_radius, nr=(0,1,0), ch=False, s=4))[0]
+        shape=(cmds.circle(n=f"{name}_side0{y}", c=(0,0,0), d=1, r=side_radius, nr=(0,1,0), ch=False, s=4))[0]
         cmds.rotate(0, 45, 0, shape)
         freeze_transformations(shape)
         #calculate what to scale the shapes by
@@ -130,8 +130,16 @@ def create_rig_control(con_name, radius, length): #consider breaking shape creat
     cmds.rotate(0, 0, -90, side_shapes[1], dph=True)
     for each in (end_shapes + side_shapes):
         freeze_transformations(each)
-    new_control = combine_shapes(con_name, (end_shapes + side_shapes))
+    new_control = combine_shapes(name, (end_shapes + side_shapes))
     return new_control
+
+def create_settings_control(con_name, radius, length):
+    control = (cmds.circle(n=f"{con_name}Settings_CTRL", c=(0,0,0), d=1, r=(radius*1.5), nr=(1,0,0), ch=False, s=4))[0]
+    print(f"new control: {control}")
+    cmds.addAttr(ln="stretchy", at="bool", k=True)
+    return control
+
+
 
 def combine_shapes(name, shapes): #TODO find better name for function
     cmds.select(d=True)
@@ -156,28 +164,27 @@ def create_control_joint(name, position):
     joint = cmds.joint(n=name, p=position)
     return joint
 
-def create_control_rig(curve_points):
+def create_control_rig(name, curve_points):
     point_index = 0
     controls = []
     joints = []
     for x in range(control_number):
         print(x)
         print(control_number)
-        new_control = create_rig_control(f"{control_name}{x}_CTRL", control_radius, control_height)#TODO pad number
+        new_control = create_rig_control(f"{name}{x}_CTRL", control_radius, control_height)#TODO pad number
         cmds.rotate(0, 0, 90, new_control)
         cmds.move(curve_points[point_index][0], 
                   curve_points[point_index][1], 
                   curve_points[point_index][2],
                   new_control)
         freeze_transformations(new_control)
-        new_joint = create_control_joint(f"{control_name}{x}_JNT", curve_points[point_index])
+        new_joint = create_control_joint(f"{name}Rig{x}_JNT", curve_points[point_index])
         point_index += 4
         controls.append(new_control)
         joints.append(new_joint)
         print(new_joint)
-        #constrain
-        constrain_pos_rot(new_control, new_joint)
-        #cmds.parentConstraint('pTorus1', 'pCone1')
+        cmds.parentConstraint(str(new_control), str(new_joint), w=1)
+        cmds.scaleConstraint(str(new_control), str(new_joint), w=1)
 
 
     return (controls, joints)
@@ -217,14 +224,14 @@ def constrain_to_curve(curve, object, offset): #come back to this... maybe give 
 
 
 
-def create_chain_joints(chain_name, geometry):
+def create_chain_joints(name, geometry):
     joints = []
     cmds.select(cl=True)
     for x in range(len(geometry)):
         #get location of chain link
         location = cmds.getAttr(f"{geometry[x]}.translate")[0]
         #create link joint
-        joint = cmds.joint(n=f"{chain_name}{x}_JNT", p=location)
+        joint = cmds.joint(n=f"{name}Geo{x}_JNT", p=location)
         joints.append(joint)
         print(f"new joint: {joint}")
     print(f"all joints: {joints}")
@@ -234,19 +241,30 @@ def create_ik_spline(curve, joints):
     #create spline with current curve
     #ikHandle -sol ikSplineSolver;
     print(f"curve in ik spline should be: {curve}")
-    cmds.ikHandle(c=curve, sol="ikSplineSolver", sj=joints[0], ee=joints[-1], fj=True)
-    pass
+    spline = cmds.ikHandle(c=curve, sol="ikSplineSolver", sj=joints[0], ee=joints[-1], fj=True)
+    return spline[0]
 
-def make_ik_spline_stretchy(curve):
-    get_curve_length(curve)
+def make_ik_spline_stretchy(curve, joints, control, number):
+    #get_curve_length(curve) #don't think I need this...
     #do stuff to make spline stretchy
-    print("I will eventually be stretchy")
+    print(f"the settings control: {control}")
+    curve_info = cmds.createNode("curveInfo")
+    shape = get_object_shape(curve)
+    cmds.connectAttr(f"{shape}.local", f"{curve_info}.inputCurve")
+    divide_node = cmds.createNode("multiplyDivide")
+    cmds.connectAttr(f"{curve_info}.arcLength", f"{divide_node}.input1X")
+    #cmds.setAttr() #TODO set up settings for divide node
+    cmds.setAttr(f"{divide_node}.operation", 2)
+    cmds.setAttr(f"{divide_node}.input2X", (number-1))
+    condition = cmds.createNode("floatCondition")
+    cmds.connectAttr(f"{divide_node}.outputX", f"{condition}.floatA")
+    cmds.connectAttr(f"{control}.stretchy", f"{condition}.condition")
+    for joint in joints:
+        cmds.connectAttr(f"{condition}.outFloat", f"{joint}.scaleX")
+
     pass
 
-def constrain_pos_rot(constraint, object):
-    cmds.parentConstraint(str(constraint), str(object), w=1, mo=True)
-    cmds.scaleConstraint(str(constraint), str(object), w=1, mo=True)
-    print(f"Constraining {object} to {constraint}")
+
 
 def constrain_geo(geometry, constraint):
     #constrain transform
@@ -257,13 +275,11 @@ def constrain_geo(geometry, constraint):
 
 
 
-#TODO create geo group for each link
-#TODO connect local(curve) to input curve(pointOnCurveInfo)
-#TODO connect position(pointOnCurveInfo) to transform(linkGrp)
-#TODO space out parameter(pointOnCurveInfo) based on length of curve and distance between chain links
 
 #TODO make a control to limit each chain's distance from each other link
 #TODO write docstrings? 
+#TODO write function to change colors of controls
+#TODO clean up
 
 #useful functions
 #freeze transformations
@@ -285,7 +301,7 @@ def main():
     print(rig_curve)
 
     #create control rig
-    controls, joints = create_control_rig(curve_points)
+    controls, joints = create_control_rig(chain_name, curve_points)
     print(controls)
     print(joints)
     print(rig_curve)
@@ -299,13 +315,17 @@ def main():
     cmds.skinCluster(tsb=True, bm=0, sm=1, nw=1, wd=1, mi=2, omi=True, dr=curve_dropoff_rate, rui=True,)
     #newSkinCluster "-toSelectedBones -bindMethod 0 -skinMethod 1 -normalizeWeights 1 
     # -weightDistribution 1 -mi 5 -omi true -dr 4 -rui true  , multipleBindPose, 1";
+    settings_control = create_settings_control(chain_name, control_radius, control_height)
+    cmds.parent(settings_control, controls[0])
 
     #connecting links to curve
     print(f"geo: {geometry}")
     chain_joints = create_chain_joints(chain_name, geometry)
-    create_ik_spline(rig_curve, chain_joints)
+    ik_handle = create_ik_spline(rig_curve, chain_joints)
     for x in range(len(chain_joints)):
-        constrain_pos_rot(chain_joints[x], geometry[x])
+        cmds.parentConstraint(str(chain_joints[x]), str(geometry[x]), w=1, mo=True)
+        #cmds.scaleConstraint(str(constraint), str(object), w=1, mo=True)
+    make_ik_spline_stretchy(rig_curve, chain_joints, settings_control, chain_links)
     '''offset = calculate_object_offset(rig_curve, len(geometry))
     temp_object = cmds.polyTorus(n="tempObject", r=0.8, sr=0.25, sa=10, sh=10, ch=False)[0]
     percentage = 0
@@ -319,9 +339,13 @@ def main():
 
     #group stuff in final hiearchy
     control_grp = cmds.group(controls, n="controls")
-    joint_grp = cmds.group(joints, n="joints")
+    control_joint_grp = cmds.group(joints, n="control_joints")
+    chain_joint_grp = cmds.group(chain_joints[0], n="chain_joints")
+    joint_grp = cmds.group([chain_joint_grp, control_joint_grp, rig_curve, ik_handle], n="joints")
     geo_grp = cmds.group(geometry, n="geometry")
     final_rig_grp = cmds.group([control_grp, joint_grp, geo_grp], n=f"{chain_name}_rig")
+    #put curve and ikhandle under joint grp
+    cmds.setAttr(f"{joint_grp}.visibility", 0)
     
 
     
