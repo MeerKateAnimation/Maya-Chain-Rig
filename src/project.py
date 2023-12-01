@@ -31,8 +31,9 @@ def create_chain_model(name, units):
     chain = []
     for x in range(units):
         link = cmds.polyTorus(n=f"{name}{x}", r=0.8, sr=0.25, sa=10, sh=10, ch=False)[0]
-        chain.append(link)
-    offset_chain(chain, (1,0,0), (30,0,0))
+        geo_group = cmds.group(link, n=f"{name}{x}_GRP")
+        chain.append(geo_group)
+    offset_chain(chain, (1,0,0), (90,0,0))
     return chain
 
 def offset_chain(chain, offsetT, offsetR): #try to add toples together instead of individual indexes of tople
@@ -47,6 +48,9 @@ def offset_chain(chain, offsetT, offsetR): #try to add toples together instead o
         new_offsetR = (new_offsetR[0] + offsetR[0],
                        new_offsetR[1] + offsetR[1],
                        new_offsetR[2] + offsetR[2])
+        print(f"chain link: {link}")
+        #freeze_transformations(link) #why does this line break maya?!!
+        #cmds.makeIdentity(link, a=True, t=True, r=True, s=True)
 
 
 
@@ -172,12 +176,13 @@ def create_control_rig(curve_points):
         joints.append(new_joint)
         print(new_joint)
         #constrain
-        cmds.parentConstraint(str(new_control), str(new_joint), w=1)
-        cmds.scaleConstraint(str(new_control), str(new_joint), w=1)
+        constrain_pos_rot(new_control, new_joint)
         #cmds.parentConstraint('pTorus1', 'pCone1')
 
 
     return (controls, joints)
+
+
         
         
 #TODO get length of curve 
@@ -195,7 +200,6 @@ def calculate_object_offset(curve, object_number):
     return offset
 
 #TODO constrain chains to curve
-#TODO create pointOnCurveInfo node for each link
 def get_object_shape(object):
     cmds.select(object, r=True)
     cmds.pickWalk(d="down")
@@ -229,7 +233,8 @@ def create_chain_joints(chain_name, geometry):
 def create_ik_spline(curve, joints):
     #create spline with current curve
     #ikHandle -sol ikSplineSolver;
-    cmds.ikHandle(c=curve, sol="ikSplineSolver", sj=joints[0], ee=joints[-1])
+    print(f"curve in ik spline should be: {curve}")
+    cmds.ikHandle(c=curve, sol="ikSplineSolver", sj=joints[0], ee=joints[-1], fj=True)
     pass
 
 def make_ik_spline_stretchy(curve):
@@ -237,6 +242,11 @@ def make_ik_spline_stretchy(curve):
     #do stuff to make spline stretchy
     print("I will eventually be stretchy")
     pass
+
+def constrain_pos_rot(constraint, object):
+    cmds.parentConstraint(str(constraint), str(object), w=1, mo=True)
+    cmds.scaleConstraint(str(constraint), str(object), w=1, mo=True)
+    print(f"Constraining {object} to {constraint}")
 
 def constrain_geo(geometry, constraint):
     #constrain transform
@@ -295,7 +305,7 @@ def main():
     chain_joints = create_chain_joints(chain_name, geometry)
     create_ik_spline(rig_curve, chain_joints)
     for x in range(len(chain_joints)):
-        constrain_geo(geometry[x], chain_joints[x])
+        constrain_pos_rot(chain_joints[x], geometry[x])
     '''offset = calculate_object_offset(rig_curve, len(geometry))
     temp_object = cmds.polyTorus(n="tempObject", r=0.8, sr=0.25, sa=10, sh=10, ch=False)[0]
     percentage = 0
