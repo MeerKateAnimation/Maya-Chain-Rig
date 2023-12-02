@@ -13,7 +13,7 @@ control_number = 3
 #chain_name = "chainControl"
 control_padding = 2 
 control_radius = 1
-control_height = 1
+control_height = 3
 control_color = 22 #maya color index
 control_settings_color = 18 #maya color index
 
@@ -81,8 +81,6 @@ def offset_chain(chain, offsetT, offsetR): #try to add toples together instead o
         new_offsetR = (new_offsetR[0] + offsetR[0],
                        new_offsetR[1] + offsetR[1],
                        new_offsetR[2] + offsetR[2])
-        print(f"chain link: {link}")
-
 
 #TODO calculate curve points and joints amount
 def calculate_chain_ends(chain): #TODO write function
@@ -224,19 +222,23 @@ def create_rig_control(name, radius, length, color): #consider breaking shape cr
         cmds.rotate(0, 45, 0, shape)
         freeze_transformations(shape)
         #calculate what to scale the shapes by
-        scale_length = length/(radius*2)
-        print(f"scale length: {scale_length}")
-        cmds.scale(scale_length, 1, 1, shape)
+        #scale_length = length/(radius*2)
+        #print(f"side radius: {side_radius}")
+        #print(f"scale length: {scale_length}")
+        #cmds.scale(scale_length, 1, 1, shape)
         freeze_transformations(shape)
         change_shape_color(shape, color)
         side_shapes.append(shape)
     #stands objects up
     #TODO fix sides shape
     cmds.rotate(90, 0, 0, side_shapes[0], dph=True)
-    cmds.rotate(0, 0, -90, side_shapes[1], dph=True)
+    cmds.rotate(0, 0, 90, side_shapes[1], dph=True)
     for each in (end_shapes + side_shapes):
         freeze_transformations(each)
     new_control = combine_shapes(name, (end_shapes + side_shapes))
+    scale_length = length/(radius*2)
+    cmds.scale(1, scale_length, 1, new_control)
+    freeze_transformations(new_control)
     return new_control
 
 def create_settings_control(name, radius, color):
@@ -254,7 +256,7 @@ def create_settings_control(name, radius, color):
     :type color: int    
 
     :returns: name of the new control created.
-    :rtype: string
+    :rtype: str
     """
     control = (cmds.circle(n=f"{name}Settings_CTRL", c=(0,0,0), d=1, r=(radius*1.5), nr=(1,0,0), ch=False, s=4))[0]
     cmds.addAttr(ln="stretchy", at="bool", k=True)
@@ -272,7 +274,7 @@ def get_object_shape(object):
     :type object: str
 
     :returns: name of the shape.
-    :rtype: string
+    :rtype: str
     """
     cmds.select(object, r=True)
     cmds.pickWalk(d="down")
@@ -462,6 +464,10 @@ def main():
         geometry = create_chain_model(chain_name, chain_links)
     elif selection_sort == True:
         geometry.sort()
+    if geometry != []:
+        pass
+        #get geometry positions
+        #group each geo
     curve_ends = calculate_chain_ends(geometry)
     total_points = calculate_point_num(control_number)
     curve_points = calculate_curve_points(curve_ends[0], curve_ends[1], total_points)
