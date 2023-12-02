@@ -14,9 +14,11 @@ control_number = 3
 control_padding = 2 
 control_radius = 1
 control_height = 1
+control_color = 22 #maya color index
+control_settings_color = 18 #maya color index
 
 chain_links = 20 #only applies if selection is empty
-chain_name = "chain" #only applies if selection is empty
+chain_name = "chain" 
 
 
 '''---------------'''
@@ -185,7 +187,7 @@ def calculate_curve_points(start_point, end_point, total_points):
     return points
 
 
-def create_rig_control(name, radius, length): #consider breaking shape creation out into it's own functions? or at least the square/rectangle part
+def create_rig_control(name, radius, length, color): #consider breaking shape creation out into it's own functions? or at least the square/rectangle part
     """Creates control for chain rig.
 
     Creates 2 circles and 2 rectangles and combines them 
@@ -200,6 +202,9 @@ def create_rig_control(name, radius, length): #consider breaking shape creation 
     :param length: desired length of control
     :type length: int
 
+    :param color: maya index color of control
+    :type color: int  
+
     :returns: name of the new control created.
     :rtype: string
     """
@@ -208,6 +213,7 @@ def create_rig_control(name, radius, length): #consider breaking shape creation 
     #create ends of control
     for x in range(1,3):
         shape=(cmds.circle(n=f"{name}_end0{x}", c=(0,0,0), d=3, r=radius, nr=(0,1,0), ch=False))[0] #TODO add padding
+        change_shape_color(shape, color)
         end_shapes.append(shape)
     cmds.move(0, radius, 0, end_shapes[0])
     cmds.move(0, -radius, 0, end_shapes[1])
@@ -221,6 +227,8 @@ def create_rig_control(name, radius, length): #consider breaking shape creation 
         scale_length = length/(radius*2)
         print(f"scale length: {scale_length}")
         cmds.scale(scale_length, 1, 1, shape)
+        freeze_transformations(shape)
+        change_shape_color(shape, color)
         side_shapes.append(shape)
     #stands objects up
     #TODO fix sides shape
@@ -231,7 +239,7 @@ def create_rig_control(name, radius, length): #consider breaking shape creation 
     new_control = combine_shapes(name, (end_shapes + side_shapes))
     return new_control
 
-def create_settings_control(name, radius):
+def create_settings_control(name, radius, color):
     """Creates control to adjust settings of rig.
 
     Creates a square control and adds desired attributes to it
@@ -242,12 +250,47 @@ def create_settings_control(name, radius):
     :param radius: desired radius of control
     :type radius: int
 
+    :param color: maya index color of control
+    :type color: int    
+
     :returns: name of the new control created.
     :rtype: string
     """
     control = (cmds.circle(n=f"{name}Settings_CTRL", c=(0,0,0), d=1, r=(radius*1.5), nr=(1,0,0), ch=False, s=4))[0]
     cmds.addAttr(ln="stretchy", at="bool", k=True)
+    change_shape_color(control, color)
+    #TODO lock MSR attrs
     return control
+
+def get_object_shape(object):
+    """gets the shape of an object.
+
+    gets the shape of an object by selecting 
+    the object and pickwalking down.
+
+    :param object: name of object to get shape of.
+    :type object: str
+
+    :returns: name of the shape.
+    :rtype: string
+    """
+    cmds.select(object, r=True)
+    cmds.pickWalk(d="down")
+    shape = read_selected()[0]
+    return shape
+
+def change_shape_color(object, color):
+    """changes the color of the given object.
+
+    :param shape: name of object to change color
+    :type shape: str
+
+    :param color: maya index color to change color of control
+    :type color: int    
+    """
+    shape = get_object_shape(object)
+    cmds.setAttr(f"{shape}.overrideEnabled", 1)
+    cmds.setAttr(f"{shape}.overrideColor", color)
 
 def combine_shapes(name, shapes): #TODO find better name for function
     """Combines shapes into one object.
@@ -298,7 +341,7 @@ def freeze_transformations(object, absolute=True, translate=True, rotate=True, s
     """
     cmds.makeIdentity(object, a=absolute, t=translate, r=rotate, s=scale)
 
-def create_control_rig(name, curve_points):
+def create_control_rig(name, curve_points, color):
     """Creates control rig.
 
     Creates controls and joints for the rig. 
@@ -310,6 +353,9 @@ def create_control_rig(name, curve_points):
     :param curve_points: lists of toples containing desired positions
     :type curve_points: list of toples
 
+    :param color: maya index color to change color of control
+    :type color: int
+
     :returns: tople containing lists of controls and joints.
     :rtype: tople of lists
     """
@@ -317,7 +363,10 @@ def create_control_rig(name, curve_points):
     controls = []
     joints = []
     for x in range(control_number):
-        new_control = create_rig_control(f"ik_{name}{x}_CTRL", control_radius, control_height)#TODO pad number
+        new_control = create_rig_control(f"ik_{name}{x}_CTRL", 
+                                         control_radius, 
+                                         control_height, 
+                                         control_color)#TODO pad number
         cmds.rotate(0, 0, 90, new_control)
         cmds.move(curve_points[point_index][0], 
                   curve_points[point_index][1], 
@@ -331,23 +380,6 @@ def create_control_rig(name, curve_points):
         cmds.parentConstraint(str(new_control), str(new_joint), w=1)
         cmds.scaleConstraint(str(new_control), str(new_joint), w=1)
     return (controls, joints)
-
-def get_object_shape(object):
-    """gets the shape of an object.
-
-    gets the shape of an object by selecting 
-    the object and pickwalking down.
-
-    :param object: name of object to get shape of.
-    :type object: str
-
-    :returns: name of the shape.
-    :rtype: string
-    """
-    cmds.select(object, r=True)
-    cmds.pickWalk(d="down")
-    shape = read_selected()[0]
-    return shape
 
 def create_chain_joints(name, geometry):
     """create joints for the chain geometry.
@@ -421,6 +453,7 @@ def make_ik_spline_stretchy(curve, joints, control, number):
 #TODO make a control to limit each chain's distance from each other link
 #TODO write function to change colors of controls
 #TODO clean up
+#TODO fix selected meshes work (does not like negative)
 
 def main():
     #get selected geometry 
@@ -435,17 +468,15 @@ def main():
     rig_curve = create_curve(chain_name, curve_points)
 
     #create control rig
-    controls, joints = create_control_rig(chain_name, curve_points)
+    controls, joints = create_control_rig(chain_name, curve_points, control_color)
     cmds.select(joints, r=True)
     cmds.select(rig_curve, add=True)
-    bindable_objects = joints.copy().append(rig_curve)
-    #cmds.bindSkin(tsb=True)
-    #tsb=True
+    bindable_objects = joints.copy().append(rig_curve) #TODO unused variable
+
     curve_dropoff_rate = 4 #range of 0.1-10.0
-    cmds.skinCluster(tsb=True, bm=0, sm=1, nw=1, wd=1, mi=2, omi=True, dr=curve_dropoff_rate, rui=True,)
-    #newSkinCluster "-toSelectedBones -bindMethod 0 -skinMethod 1 -normalizeWeights 1 
-    # -weightDistribution 1 -mi 5 -omi true -dr 4 -rui true  , multipleBindPose, 1";
-    settings_control = create_settings_control(chain_name, control_radius)
+    cmds.skinCluster(tsb=True, bm=0, sm=1, nw=1, wd=1, mi=2, 
+                     omi=True, dr=curve_dropoff_rate, rui=True,) #TODO what is this doing again?
+    settings_control = create_settings_control(chain_name, control_radius, control_settings_color)
     cmds.parent(settings_control, controls[0])
 
     #connecting links to curve
@@ -453,7 +484,6 @@ def main():
     ik_handle = create_ik_spline(chain_name, rig_curve, chain_joints)
     for x in range(len(chain_joints)):
         cmds.parentConstraint(str(chain_joints[x]), str(geometry[x]), w=1, mo=True)
-        #cmds.scaleConstraint(str(constraint), str(object), w=1, mo=True)
     make_ik_spline_stretchy(rig_curve, chain_joints, settings_control, chain_links)
 
     #group stuff in final hiearchy
@@ -461,10 +491,9 @@ def main():
     control_joint_grp = cmds.group(joints, n="control_joints")
     chain_joint_grp = cmds.group(chain_joints[0], n="chain_joints")
     joint_grp = cmds.group([chain_joint_grp, control_joint_grp, rig_curve, ik_handle], n="joints")
+    cmds.setAttr(f"{joint_grp}.visibility", 0)
     geo_grp = cmds.group(geometry, n="geometry")
     final_rig_grp = cmds.group([control_grp, joint_grp, geo_grp], n=f"{chain_name}_rig")
-    #put curve and ikhandle under joint grp
-    cmds.setAttr(f"{joint_grp}.visibility", 0)
     
 
 if __name__ == "__main__":
