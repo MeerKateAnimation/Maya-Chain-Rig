@@ -492,13 +492,10 @@ def main():
     rig_curve = create_curve(chain_name, curve_points)
 
     #create control rig
-    controls, joints, settings_control = create_control_rig(chain_name, 
-                                                            curve_points, 
-                                                            control_number, 
-                                                            control_radius, 
-                                                            control_height,
-                                                            control_color, 
-                                                            control_settings_color)
+    control_rig = create_control_rig(chain_name, curve_points, control_number, 
+                       control_radius, control_height,
+                       control_color, control_settings_color)
+    controls, joints, settings_control = control_rig
     cmds.select(joints, r=True)
     cmds.select(rig_curve, add=True)
     cmds.skinCluster(tsb=True, bm=0, sm=1, nw=1, wd=1, mi=2, 
