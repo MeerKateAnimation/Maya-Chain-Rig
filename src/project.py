@@ -17,8 +17,7 @@ control_color = 22 #maya color index
 control_settings_color = 18 #maya color index
 
 curve_dropoff_rate = 4 #range of 0.1-10.0 (affects skinning of rig curve)
-'''-------------==------'''
-
+'''---------------------'''
 
 def read_selected():
     """Reads selected Maya objects.
@@ -42,19 +41,16 @@ def create_chain_model(name, units):
     :param units: amount of chain links to create
     :type units: int
 
-    :returns: List of the groups that hold the chain link models 
-    and their group parents.
-    :rtype: tuple of 2 lists 
+    :returns: List of the groups that hold the chain link models.
+    :rtype: lists
     """
-    chain_grps = []
     chain = []
     for x in range(units):
-        link = cmds.polyTorus(n=f"{name}{x}_GEO", r=0.9, sr=0.15, sa=10, sh=10, ch=False)[0]
-        geo_group = cmds.group(link, n=f"{name}{x}_GRP")
-        chain_grps.append(geo_group)
+        link = cmds.polyTorus(n=f"{name}{x}_GEO", r=0.9, sr=0.15, 
+                              sa=10, sh=10, ch=False)[0]
         chain.append(link)
     offset_chain(chain, (1,0,0), (90,0,0))
-    return (chain_grps, chain)
+    return chain
 
 def offset_chain(chain, offsetT, offsetR):
     """Offsets chain link models to form a chain.
@@ -89,10 +85,10 @@ def calculate_chain_ends(chain):
     :returns: tuple of X position of first and last chain links
     :rtype: tuple
     """
+    print(f"chain[0]: {chain[0]}")
     x1 = cmds.xform(chain[0], q=True, t=True, ws=True)[0]
     x2 = cmds.xform(chain[-1], q=True, t=True, ws=True)[0]
     return (x1, x2)
-
 
 def calculate_point_offset(points, x1, x2):
     """Calculates the offset between a specified number of points.
@@ -176,7 +172,6 @@ def calculate_curve_points(start_point, end_point, total_points):
         offset = offset + point_offset
     return points
 
-
 def create_control(name, radius, length, color): 
     """Creates control for chain rig.
 
@@ -245,7 +240,8 @@ def create_settings_control(name, radius, color):
     :returns: name of the new control created.
     :rtype: str
     """
-    control = (cmds.circle(n=f"{name}Settings_CTRL", c=(0,0,0), d=1, r=(radius*1.5), nr=(1,0,0), ch=False, s=4))[0]
+    control = (cmds.circle(n=f"{name}Settings_CTRL", c=(0,0,0), d=1, 
+                           r=(radius*1.5), nr=(1,0,0), ch=False, s=4))[0]
     cmds.addAttr(ln="stretchy", at="bool", k=True)
     change_shape_color(control, color)
     return control
@@ -307,7 +303,8 @@ def combine_shapes(name, shapes):
     cmds.delete()
     return new_object
 
-def freeze_transformations(object, absolute=True, translate=True, rotate=True, scale=True):
+def freeze_transformations(object, absolute=True, translate=True, 
+                           rotate=True, scale=True):
     """freezes transformations of given object.
 
     Provides a simpler way to freeze transformations of an object
@@ -329,7 +326,8 @@ def freeze_transformations(object, absolute=True, translate=True, rotate=True, s
     """
     cmds.makeIdentity(object, a=absolute, t=translate, r=rotate, s=scale)
 
-def create_control_rig(name, curve_points, color):
+def create_control_rig(name, curve_points, control_num, radius, height, 
+                       color, settings_color):
     """Creates rig to control curve.
 
     Creates controls and joints for the rig. 
@@ -341,8 +339,21 @@ def create_control_rig(name, curve_points, color):
     :param curve_points: lists of tuples containing desired positions
     :type curve_points: list of tuples
 
+    :param control_num: number of controls to make
+    :type control num: int
+
+    :param radius: desired radius of controls
+    :type radius: int
+
+    :param height: desired height of controls
+    :type heigt: int
+
     :param color: maya index color to change color of control
     :type color: int
+
+    :param settings_color: maya index color to change color of 
+    settings control
+    :type settings_colir: int
 
     :returns: tuple containing lists of controls, list of joints,
     & setting control name. 
@@ -351,23 +362,22 @@ def create_control_rig(name, curve_points, color):
     point_index = 0
     controls = []
     joints = []
-    for x in range(control_number):
-        new_control = create_control(f"ik_{name}{x}_CTRL", 
-                                         control_radius, 
-                                         control_height, 
-                                         color)
+    for x in range(control_num):
+        new_control = create_control(f"ik_{name}{x}_CTRL", radius, 
+                                     height, color)
         cmds.rotate(0, 0, 90, new_control)
         if x == 0:
             settings_control = create_settings_control(name,
                                                        control_radius, 
-                                                       control_settings_color)
+                                                       settings_color)
             cmds.parent(settings_control, new_control)
         pos_x = curve_points[point_index][0]
         pos_y = curve_points[point_index][1]
         pos_z = curve_points[point_index][2]
         cmds.move(pos_x, pos_y, pos_z, new_control)
         freeze_transformations(new_control)
-        new_joint = cmds.joint(n=f"ik_{name}Rig{x}_JNT", p=curve_points[point_index])
+        new_joint = cmds.joint(n=f"ik_{name}Rig{x}_JNT", 
+                               p=curve_points[point_index])
         point_index += 4
         controls.append(new_control)
         joints.append(new_joint)
@@ -425,7 +435,8 @@ def create_ik_spline(name, curve, joints):
     :returns: name of the object created.
     :rtype: string
     """
-    spline = cmds.ikHandle(n=f"{name}_ikHandle", c=curve, sol="ikSplineSolver", sj=joints[0], ee=joints[-1], fj=True)
+    spline = cmds.ikHandle(n=f"{name}_ikHandle", c=curve, sol="ikSplineSolver", 
+                           sj=joints[0], ee=joints[-1], fj=True)
     return spline[0]
 
 def make_ik_spline_stretchy(curve, joints, control):
@@ -464,21 +475,30 @@ def main():
     #reads selected geometry or creates geometry if none is selected
     geometry = read_selected()
     if geometry == []:
-        geometry_grps, geometry = create_chain_model(chain_name, chain_links)
+        geometry = create_chain_model(chain_name, chain_links)
+        print(f"geometry: {geometry}")
     else:
         if selection_sort == True:
             geometry.sort()
-        geometry_grps = []
-        for x in range(len(geometry)): 
-            geo_group = cmds.group(geometry[x], n=f"{chain_name}{x+1}_GRP")
-            geometry_grps.append(geo_group)
+    geometry_grps = []
+    for x in range(len(geometry)): 
+        geo_group = cmds.group(geometry[x], n=f"{chain_name}{x}_GRP")
+        geometry_grps.append(geo_group)
     curve_ends = calculate_chain_ends(geometry)
     total_points = calculate_point_num(control_number)
-    curve_points = calculate_curve_points(curve_ends[0], curve_ends[1], total_points)
+    curve_points = calculate_curve_points(curve_ends[0], 
+                                          curve_ends[1], 
+                                          total_points)
     rig_curve = create_curve(chain_name, curve_points)
 
     #create control rig
-    controls, joints, settings_control = create_control_rig(chain_name, curve_points, control_color)
+    controls, joints, settings_control = create_control_rig(chain_name, 
+                                                            curve_points, 
+                                                            control_number, 
+                                                            control_radius, 
+                                                            control_height,
+                                                            control_color, 
+                                                            control_settings_color)
     cmds.select(joints, r=True)
     cmds.select(rig_curve, add=True)
     cmds.skinCluster(tsb=True, bm=0, sm=1, nw=1, wd=1, mi=2, 
@@ -488,14 +508,16 @@ def main():
     chain_joints = create_chain_joints(chain_name, geometry) 
     ik_handle = create_ik_spline(chain_name, rig_curve, chain_joints)
     for x in range(len(chain_joints)):
-        cmds.parentConstraint(str(chain_joints[x]), geometry_grps[x], w=1, mo=True)
+        cmds.parentConstraint(str(chain_joints[x]), geometry_grps[x], 
+                              w=1, mo=True)
     make_ik_spline_stretchy(rig_curve, chain_joints, settings_control)
 
     #group objects into final hiearchy
     control_grp = cmds.group(controls, n="controls")
     control_joint_grp = cmds.group(joints, n="control_joints")
     chain_joint_grp = cmds.group(chain_joints[0], n="chain_joints")
-    joint_grp = cmds.group([chain_joint_grp, control_joint_grp, rig_curve, ik_handle], n="joints")
+    joint_grp = cmds.group([chain_joint_grp, control_joint_grp, rig_curve, 
+                            ik_handle], n="joints")
     cmds.setAttr(f"{joint_grp}.visibility", 0)
     geo_grp = cmds.group(geometry_grps, n="geometry")
     cmds.group([control_grp, joint_grp, geo_grp], n=f"{chain_name}_rig")
