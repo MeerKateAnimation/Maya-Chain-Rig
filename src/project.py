@@ -2,9 +2,9 @@ import maya.cmds as cmds
 import math
 
 
-'''------------------
-CHANGEABLE ATTRIBUTES
-------------------'''
+'''------------------------
+   CHANGEABLE ATTRIBUTES
+------------------------'''
 selection_sort = True
 
 chain_name = "chain" 
@@ -17,7 +17,7 @@ control_color = 22 #maya color index
 control_settings_color = 18 #maya color index
 
 curve_dropoff_rate = 4 #range of 0.1-10.0 (affects skinning of rig curve)
-'''---------------'''
+'''-------------==------'''
 
 
 def read_selected():
@@ -144,12 +144,10 @@ def create_curve(name, points):
     :returns: name of curve object
     :rtype: str 
     """
-    curve = cmds.curve(n=f"{name}RigCurve", d=3, p=(points[0])) #first curve point
-    print(f"received points: {points}")
+    #creates first curve point
+    curve = cmds.curve(n=f"{name}RigCurve", d=3, p=(points[0])) 
     for x in range(1,len(points)):
-        print(f"points: {points[x]}")
         cmds.curve(curve, a=True, p=(points[x]))
-        print(f"what are these?: {points[x]}")
     return curve
 
 def calculate_curve_points(start_point, end_point, total_points):
@@ -174,14 +172,12 @@ def calculate_curve_points(start_point, end_point, total_points):
     offset = start_point
     point_offset = calculate_point_offset(total_points, start_point, end_point)  
     for x in range(total_points):
-        #cmds.curve(curve, a=True, p=(offset,0,0))
         points.append((offset,0,0)) #creates an offset in x-axis
         offset = offset + point_offset
-    print(f"calculated points: {points}")
     return points
 
 
-def create_control(name, radius, length, color): #consider breaking shape creation out into it's own functions? or at least the square/rectangle part
+def create_control(name, radius, length, color): 
     """Creates control for chain rig.
 
     Creates 2 circles and 2 rectangles and combines them 
@@ -206,7 +202,8 @@ def create_control(name, radius, length, color): #consider breaking shape creati
     side_shapes=[]
     #create ends of control
     for x in range(1,3):
-        shape=(cmds.circle(n=f"{name}_end0{x}", c=(0,0,0), d=3, r=radius, nr=(0,1,0), ch=False))[0]
+        shape=(cmds.circle(n=f"{name}_end0{x}", c=(0,0,0), d=3, 
+                           r=radius, nr=(0,1,0), ch=False))[0]
         change_shape_color(shape, color)
         end_shapes.append(shape)
     cmds.move(0, radius, 0, end_shapes[0])
@@ -214,18 +211,13 @@ def create_control(name, radius, length, color): #consider breaking shape creati
     #create sides of control
     side_radius = math.sqrt(2*(radius*radius))
     for y in range(1,3):
-        shape=(cmds.circle(n=f"{name}_side0{y}", c=(0,0,0), d=1, r=side_radius, nr=(0,1,0), ch=False, s=4))[0]
+        shape=(cmds.circle(n=f"{name}_side0{y}", c=(0,0,0), d=1, 
+                           r=side_radius, nr=(0,1,0), ch=False, s=4))[0]
         cmds.rotate(0, 45, 0, shape)
-        freeze_transformations(shape)
-        #calculate what to scale the shapes by
-        #scale_length = length/(radius*2)
-        #print(f"side radius: {side_radius}")
-        #print(f"scale length: {scale_length}")
-        #cmds.scale(scale_length, 1, 1, shape)
         freeze_transformations(shape)
         change_shape_color(shape, color)
         side_shapes.append(shape)
-    #stands objects up
+    #orient side objects
     cmds.rotate(90, 0, 0, side_shapes[0], dph=True)
     cmds.rotate(0, 0, 90, side_shapes[1], dph=True)
     for each in (end_shapes + side_shapes):
@@ -366,9 +358,6 @@ def create_control_rig(name, curve_points, color):
                                          color)
         cmds.rotate(0, 0, 90, new_control)
         if x == 0:
-            #first_control_position = cmds.xform(new_control, q=True, t=True, ws=True)
-            #print(f"controls: {controls}")
-            #print(f"location of first control: {first_control_position}")
             settings_control = create_settings_control(name,
                                                        control_radius, 
                                                        control_settings_color)
@@ -500,7 +489,6 @@ def main():
     ik_handle = create_ik_spline(chain_name, rig_curve, chain_joints)
     for x in range(len(chain_joints)):
         cmds.parentConstraint(str(chain_joints[x]), geometry_grps[x], w=1, mo=True)
-        print(f"geometry group?: {geometry_grps[x]}")
     make_ik_spline_stretchy(rig_curve, chain_joints, settings_control)
 
     #group objects into final hiearchy
