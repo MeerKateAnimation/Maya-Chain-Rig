@@ -47,16 +47,18 @@ def create_chain_model(name, units):
     :param units: amount of chain links to create
     :type units: int
 
-    :returns: List of the groups that hold the chain link models.
-    :rtype: list
+    :returns: List of the groups that hold the chain link models. #TODO fix description
+    :rtype: tople of 2 lists 
     """
+    chain_grps = []
     chain = []
     for x in range(units):
         link = cmds.polyTorus(n=f"{name}{x}", r=0.9, sr=0.15, sa=10, sh=10, ch=False)[0]
         geo_group = cmds.group(link, n=f"{name}{x}_GRP")
+        chain_grps.append(link)
         chain.append(geo_group)
     offset_chain(chain, (1,0,0), (90,0,0))
-    return chain
+    return (chain_grps, chain)
 
 def offset_chain(chain, offsetT, offsetR): #try to add toples together instead of individual indexes of tople
     """Offsets chain link models to form a chain.
@@ -430,7 +432,7 @@ def create_ik_spline(name, curve, joints):
     spline = cmds.ikHandle(n=f"{name}_ikHandle", c=curve, sol="ikSplineSolver", sj=joints[0], ee=joints[-1], fj=True)
     return spline[0]
 
-def make_ik_spline_stretchy(curve, joints, control, number):
+def make_ik_spline_stretchy(curve, joints, control):
     """Makes an ik spline into a stretchy rig.
 
     Makes joints in an ik spline scale in the x axis to make rig stretchy.
@@ -445,19 +447,25 @@ def make_ik_spline_stretchy(curve, joints, control, number):
 
     :param control: control to toggle stretchiness. MUST have "stretchy" attr
     :type control: str
-    
-    :param number: 
-    :type number: int
     """
     curve_info = cmds.createNode("curveInfo")
     shape = get_object_shape(curve)
     cmds.connectAttr(f"{shape}.local", f"{curve_info}.inputCurve")
     divide_node = cmds.createNode("multiplyDivide")
-    cmds.connectAttr(f"{curve_info}.arcLength", f"{divide_node}.input1X")
+
+    multiply_node = cmds.createNode("multiplyDivide")
+    cmds.connectAttr(f"{curve_info}.arcLength", f"{multiply_node}.input1X")
+    cmds.connectAttr(f"{divide_node}.outputX", f"{multiply_node}.input2X")
+    cmds.setAttr(f"{multiply_node}.operation", 1)
+
+
     cmds.setAttr(f"{divide_node}.operation", 2)
-    cmds.setAttr(f"{divide_node}.input2X", (number-1))
+    test = cmds.getAttr(f"{curve_info}.arcLength")
+    cmds.setAttr(f"{divide_node}.input2X", test)
+    cmds.setAttr(f"{divide_node}.input1X", 1)
+
     condition = cmds.createNode("floatCondition")
-    cmds.connectAttr(f"{divide_node}.outputX", f"{condition}.floatA")
+    cmds.connectAttr(f"{multiply_node}.outputX", f"{condition}.floatA")
     cmds.connectAttr(f"{control}.stretchy", f"{condition}.condition")
     for joint in joints:
         cmds.connectAttr(f"{condition}.outFloat", f"{joint}.scaleX")
@@ -470,17 +478,16 @@ def make_ik_spline_stretchy(curve, joints, control, number):
 def main():
     geometry = read_selected()
     if geometry == []:
-        geometry_grps = create_chain_model(chain_name, chain_links)
+        geometry_grps, geometry = create_chain_model(chain_name, chain_links)
+        #geometry = geometry_grps
     else:
         if selection_sort == True:
             geometry.sort()
         geometry_grps = []
-        for x in range(len(geometry)): #TODO did something and broke maya
+        for x in range(len(geometry)): 
             geo_group = cmds.group(geometry[x], n=f"{chain_name}{x+1}_GRP")
             geometry_grps.append(geo_group)
-        #get geometry positions
-        #group each geo
-    curve_ends = calculate_chain_ends(geometry_grps)
+    curve_ends = calculate_chain_ends(geometry) #TODO
     total_points = calculate_point_num(control_number)
     curve_points = calculate_curve_points(curve_ends[0], curve_ends[1], total_points)
     rig_curve = create_curve(chain_name, curve_points)
@@ -489,7 +496,6 @@ def main():
     controls, joints = create_control_rig(chain_name, curve_points, control_color)
     cmds.select(joints, r=True)
     cmds.select(rig_curve, add=True)
-    #bindable_objects = joints.copy().append(rig_curve) #TODO unused variable
 
     curve_dropoff_rate = 4 #range of 0.1-10.0
     cmds.skinCluster(tsb=True, bm=0, sm=1, nw=1, wd=1, mi=2, 
@@ -504,11 +510,11 @@ def main():
     cmds.parent(settings_control, controls[0])
 
     #connecting links to curve
-    chain_joints = create_chain_joints(chain_name, geometry_grps)
+    chain_joints = create_chain_joints(chain_name, geometry) 
     ik_handle = create_ik_spline(chain_name, rig_curve, chain_joints)
     for x in range(len(chain_joints)):
         cmds.parentConstraint(str(chain_joints[x]), str(geometry_grps[x]), w=1, mo=True)
-    make_ik_spline_stretchy(rig_curve, chain_joints, settings_control, chain_links)
+    make_ik_spline_stretchy(rig_curve, chain_joints, settings_control)
 
     #group stuff in final hiearchy
     control_grp = cmds.group(controls, n="controls")
